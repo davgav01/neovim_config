@@ -2,4 +2,9 @@
 --  I promise not to create any merge conflicts in this directory :)
 --
 -- See the kickstart.nvim README for more information
-return {}
+
+-- Load Python-specific configuration
+return {
+  -- You can add more custom plugins here
+  -- Each plugin should be in a separate file for better organization
+}
