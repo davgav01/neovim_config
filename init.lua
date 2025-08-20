@@ -209,6 +209,14 @@ vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper win
 vim.keymap.set('v', 'J', ":m '>+1<CR>gv", { desc = 'Move selection down' })
 vim.keymap.set('v', 'K', ":m '<-2<CR>gv", { desc = 'Move selection up' })
 
+-- Buffer navigation
+vim.keymap.set('n', '<leader>n', ':bnext<CR>', { desc = 'Next buffer' })
+vim.keymap.set('n', '<leader>b', ':bprevious<CR>', { desc = 'Previous buffer' })
+
+-- Center cursor after half-page movements
+vim.keymap.set('n', '<C-d>', '<C-d>zz', { desc = 'Half page down and center' })
+vim.keymap.set('n', '<C-u>', '<C-u>zz', { desc = 'Half page up and center' })
+
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
 
@@ -285,6 +293,181 @@ require('lazy').setup({
         topdelete = { text = '‾' },
         changedelete = { text = '~' },
       },
+      on_attach = function(bufnr)
+        local gitsigns = require 'gitsigns'
+
+        local function map(mode, l, r, opts)
+          opts = opts or {}
+          opts.buffer = bufnr
+          vim.keymap.set(mode, l, r, opts)
+        end
+
+        -- Navigation
+        map('n', ']c', function()
+          if vim.wo.diff then
+            vim.cmd.normal { ']c', bang = true }
+          else
+            gitsigns.nav_hunk 'next'
+          end
+        end, { desc = 'Jump to next git [c]hange' })
+
+        map('n', '[c', function()
+          if vim.wo.diff then
+            vim.cmd.normal { '[c', bang = true }
+          else
+            gitsigns.nav_hunk 'prev'
+          end
+        end, { desc = 'Jump to previous git [c]hange' })
+
+        -- Actions
+        -- visual mode
+        map('v', '<leader>hs', function()
+          gitsigns.stage_hunk { vim.fn.line '.', vim.fn.line 'v' }
+        end, { desc = 'git [s]tage hunk' })
+        map('v', '<leader>hr', function()
+          gitsigns.reset_hunk { vim.fn.line '.', vim.fn.line 'v' }
+        end, { desc = 'git [r]eset hunk' })
+        -- normal mode
+        map('n', '<leader>hs', gitsigns.stage_hunk, { desc = 'git [s]tage hunk' })
+        map('n', '<leader>hr', gitsigns.reset_hunk, { desc = 'git [r]eset hunk' })
+        map('n', '<leader>hS', gitsigns.stage_buffer, { desc = 'git [S]tage buffer' })
+        map('n', '<leader>hu', gitsigns.undo_stage_hunk, { desc = 'git [u]ndo stage hunk' })
+        map('n', '<leader>hR', gitsigns.reset_buffer, { desc = 'git [R]eset buffer' })
+        map('n', '<leader>hp', gitsigns.preview_hunk, { desc = 'git [p]review hunk' })
+        map('n', '<leader>hb', gitsigns.blame_line, { desc = 'git [b]lame line' })
+        map('n', '<leader>hd', gitsigns.diffthis, { desc = 'git [d]iff against index' })
+      end,
+    },
+  },
+
+  -- Add surround plugin by tpope (disable mini.surround below)
+  { 'tpope/vim-surround', event = 'VeryLazy' },
+
+  -- Git porcelain (Fugitive) with non-conflicting keymaps
+  {
+    'tpope/vim-fugitive',
+    cmd = { 'Git', 'G' },
+    keys = {
+      { '<leader>gs', ':Git<CR>', desc = 'Git status' },
+      { '<leader>gc', ':Git commit<CR>', desc = 'Git commit' },
+      { '<leader>gp', ':Git push<CR>', desc = 'Git push' },
+      { '<leader>gl', ':Git pull<CR>', desc = 'Git pull' },
+      { '<leader>gb', ':Git blame<CR>', desc = 'Git blame' },
+      { '<leader>gd', ':Gvdiffsplit!<CR>', desc = 'Git diff (vsplit)' },
+      { '<leader>ga', ':Gwrite<CR>', desc = 'Git add current file' },
+    },
+  },
+
+  -- Quick file navigation with harpoon
+  {
+    'ThePrimeagen/harpoon',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+    },
+    event = 'VeryLazy',
+    keys = {
+      { '<leader>hm', function() require('harpoon.mark').add_file() end, desc = 'Harpoon [M]ark file' },
+      { '<leader>hn', function() require('harpoon.ui').nav_next() end, desc = 'Harpoon [N]ext' },
+      { '<leader>hp', function() require('harpoon.ui').nav_prev() end, desc = 'Harpoon [P]revious' },
+      { '<leader>ht', function() require('harpoon.ui').toggle_quick_menu() end, desc = 'Harpoon [T]oggle menu' },
+      { '<leader>h1', function() require('harpoon.ui').nav_file(1) end, desc = 'Harpoon file 1' },
+      { '<leader>h2', function() require('harpoon.ui').nav_file(2) end, desc = 'Harpoon file 2' },
+      { '<leader>h3', function() require('harpoon.ui').nav_file(3) end, desc = 'Harpoon file 3' },
+      { '<leader>h4', function() require('harpoon.ui').nav_file(4) end, desc = 'Harpoon file 4' },
+    },
+  },
+
+  -- File tree explorer
+  {
+    'nvim-neo-tree/neo-tree.nvim',
+    branch = 'v3.x',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+      'nvim-tree/nvim-web-devicons',
+      'MunifTanjim/nui.nvim',
+    },
+    keys = {
+      { '<leader>e', ':Neotree toggle<CR>', desc = 'Toggle [E]xplorer' },
+      { '<leader>o', ':Neotree focus<CR>', desc = 'Focus [O]pen explorer' },
+    },
+    opts = {
+      window = {
+        mappings = {
+          ['<space>'] = 'none', -- Disable space key in tree
+          ['<cr>'] = 'open',
+          ['<tab>'] = 'open',
+          ['<2-leftmouse>'] = 'open',
+          ['<c-h>'] = 'navigate_up',
+          ['<c-l>'] = 'open',
+          ['<c-v>'] = 'open_vsplit',
+          ['<c-x>'] = 'open_split',
+          ['<c-t>'] = 'open_tabnew',
+          ['w'] = 'close_window',
+          ['<bs>'] = 'navigate_up',
+          ['.'] = 'set_root',
+          ['H'] = 'toggle_hidden',
+          ['I'] = 'toggle_gitignore',
+          ['D'] = 'delete',
+          ['r'] = 'rename',
+          ['y'] = 'copy_to_clipboard',
+          ['d'] = 'cut_to_clipboard',
+          ['p'] = 'paste_from_clipboard',
+          ['c'] = 'copy',
+          ['m'] = 'move',
+          ['q'] = 'close_window',
+        },
+      },
+      filesystem = {
+        filtered_items = {
+          visible = false,
+          hide_dotfiles = false,
+          hide_gitignored = false,
+          hide_hidden = false,
+          hide_by_name = {
+            'node_modules',
+            '.git',
+            '.DS_Store',
+          },
+          hide_by_pattern = {
+            '*.meta',
+            '*/src/*/tsconfig.json',
+          },
+          always_show = {
+            '.gitignore',
+          },
+          never_show = {
+            '.DS_Store',
+            'thumbs.db',
+          },
+        },
+        follow_current_file = {
+          enabled = true,
+        },
+        use_libuv_file_watcher = true,
+      },
+    },
+  },
+
+  -- Markdown preview
+  {
+    'mzlogin/vim-markdown-toc',
+    ft = { 'markdown' },
+    keys = {
+      { '<leader>mt', ':GenTocGFM<CR>', desc = '[M]arkdown [T]able of contents' },
+    },
+  },
+
+  -- Markdown preview with proper rendering
+  {
+    'ellisonleao/glow.nvim',
+    cmd = 'Glow',
+    keys = {
+      { '<leader>mp', ':Glow<CR>', desc = '[M]arkdown [P]review' },
+    },
+    opts = {
+      border = 'rounded',
+      width = 120,
+      height = 100,
     },
   },
 
@@ -352,6 +535,9 @@ require('lazy').setup({
         { '<leader>t', group = '[T]oggle' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
         { '<leader>p', group = '[P]ython' },
+        { '<leader>m', group = '[M]olten (Jupyter)' },
+        { '<leader>q', group = '[Q]uarto' },
+        { '<leader>j', group = '[J]upytext' },
       },
     },
   },
@@ -686,6 +872,9 @@ require('lazy').setup({
                 diagnosticMode = 'workspace',
                 useLibraryCodeForTypes = true,
                 typeCheckingMode = 'basic',
+                diagnosticSeverityOverrides = {
+                  reportUnusedExpression = "none",
+                },
               },
             },
           },
@@ -820,12 +1009,12 @@ require('lazy').setup({
           -- `friendly-snippets` contains a variety of premade snippets.
           --    See the README about individual language/framework/plugin snippets:
           --    https://github.com/rafamadriz/friendly-snippets
-          -- {
-          --   'rafamadriz/friendly-snippets',
-          --   config = function()
-          --     require('luasnip.loaders.from_vscode').lazy_load()
-          --   end,
-          -- },
+          {
+            'rafamadriz/friendly-snippets',
+            config = function()
+              require('luasnip.loaders.from_vscode').lazy_load()
+            end,
+          },
         },
         opts = {},
       },
@@ -967,7 +1156,7 @@ require('lazy').setup({
   },
 
   -- Highlight todo, notes, etc in comments
-  { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
+  -- { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
 
   { -- Collection of various small independent plugins/modules
     'echasnovski/mini.nvim',
@@ -985,7 +1174,8 @@ require('lazy').setup({
       -- - saiw) - [S]urround [A]dd [I]nner [W]ord [)]Paren
       -- - sd'   - [S]urround [D]elete [']quotes
       -- - sr)'  - [S]urround [R]eplace [)] [']
-      require('mini.surround').setup()
+      -- Surround handled by tpope/vim-surround (mini.surround disabled)
+      -- require('mini.surround').setup()
 
       -- Simple and easy statusline.
       --  You could remove this setup call if you don't like it,
@@ -1030,6 +1220,126 @@ require('lazy').setup({
     --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
     --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
     --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
+  },
+
+  -- Jupyter notebook setup following Notebook-Setup.md
+  {
+    -- Code running and output viewing
+    'benlubas/molten-nvim',
+    version = "^1.0.0", -- use version <2.0.0 to avoid breaking changes
+    dependencies = { '3rd/image.nvim' },
+    build = ":UpdateRemotePlugins",
+    ft = { "python", "markdown", "quarto" },
+    init = function()
+      -- Molten configuration options from Notebook-Setup.md
+      vim.g.molten_auto_open_output = false
+      vim.g.molten_image_provider = "image.nvim"
+      vim.g.molten_wrap_output = true
+      vim.g.molten_virt_text_output = true
+      vim.g.molten_virt_lines_off_by_1 = true
+    end,
+    keys = {
+      -- Minimum keybinds
+      { "<localleader>e", ":MoltenEvaluateOperator<CR>", desc = "evaluate operator", silent = true },
+      { "<localleader>os", ":noautocmd MoltenEnterOutput<CR>", desc = "open output window", silent = true },
+      -- Additional recommended keybinds
+      { "<localleader>rr", ":MoltenReevaluateCell<CR>", desc = "re-eval cell", silent = true },
+      { "<localleader>r", ":<C-u>MoltenEvaluateVisual<CR>gv", desc = "execute visual selection", silent = true, mode = "v" },
+      { "<localleader>oh", ":MoltenHideOutput<CR>", desc = "close output window", silent = true },
+      { "<localleader>md", ":MoltenDelete<CR>", desc = "delete Molten cell", silent = true },
+      { "<localleader>mx", ":MoltenOpenInBrowser<CR>", desc = "open output in browser", silent = true },
+    },
+  },
+
+  {
+    -- Image support for molten
+    "3rd/image.nvim",
+    opts = {
+      backend = "kitty",
+      integrations = {
+        markdown = {
+          enabled = true,
+          clear_in_insert_mode = false,
+          download_remote_images = true,
+          only_render_image_at_cursor = false,
+          filetypes = { "markdown", "vimwiki" },
+        },
+        neorg = {
+          enabled = true,
+          clear_in_insert_mode = false,
+          download_remote_images = true,
+          only_render_image_at_cursor = false,
+          filetypes = { "norg" },
+        },
+      },
+      max_width = nil,
+      max_height = nil,
+      max_width_window_percentage = nil,
+      max_height_window_percentage = 50,
+      kitty_method = "normal",
+    },
+  },
+
+  {
+    -- LSP features for code cells via quarto-nvim and otter.nvim
+    'quarto-dev/quarto-nvim',
+    dependencies = {
+      'jmbuhr/otter.nvim',
+      'nvim-treesitter/nvim-treesitter',
+    },
+    ft = { "quarto", "markdown" },
+    config = function()
+      local quarto = require("quarto")
+      quarto.setup({
+        lspFeatures = {
+          languages = { "r", "python", "rust" },
+          chunks = "all",
+          diagnostics = {
+            enabled = true,
+            triggers = { "BufWritePost" },
+          },
+          completion = {
+            enabled = true,
+          },
+        },
+        keymap = {
+          hover = "H",
+          definition = "gd",
+          rename = "<leader>rn",
+          references = "gr",
+          format = "<leader>gf",
+        },
+        codeRunner = {
+          enabled = true,
+          default_method = "molten",
+        },
+      })
+
+      -- Quarto runner keymaps
+      local runner = require("quarto.runner")
+      vim.keymap.set("n", "<localleader>rc", runner.run_cell, { desc = "run cell", silent = true })
+      vim.keymap.set("n", "<localleader>ra", runner.run_above, { desc = "run cell and above", silent = true })
+      vim.keymap.set("n", "<localleader>rA", runner.run_all, { desc = "run all cells", silent = true })
+      vim.keymap.set("n", "<localleader>rl", runner.run_line, { desc = "run line", silent = true })
+      vim.keymap.set("v", "<localleader>r", runner.run_range, { desc = "run visual range", silent = true })
+      vim.keymap.set("n", "<localleader>RA", function()
+        runner.run_all(true)
+      end, { desc = "run all cells of all languages", silent = true })
+    end,
+  },
+
+  {
+    -- Notebook conversion
+    'GCBallesteros/jupytext.nvim',
+    config = function()
+      require("jupytext").setup({
+        style = "markdown",
+        output_extension = "md",
+        force_ft = "markdown",
+      })
+    end,
+    -- Uncomment the next line if you want the plugin to be loaded only when opening a .ipynb file
+    -- ft = "ipynb"
   },
 
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
@@ -1078,6 +1388,157 @@ require('lazy').setup({
       lazy = '💤 ',
     },
   },
+})
+
+-- [[ Notebook Setup - Additional Configuration ]]
+
+-- Activate quarto in markdown buffers
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "markdown",
+  callback = function()
+    require("quarto").activate()
+  end,
+})
+
+-- Automatically import output chunks from a jupyter notebook
+-- tries to find a kernel that matches the kernel in the jupyter notebook
+-- falls back to a kernel that matches the name of the active venv (if any)
+local imb = function(e) -- init molten buffer
+    vim.schedule(function()
+        local kernels = vim.fn.MoltenAvailableKernels()
+        local try_kernel_name = function()
+            local metadata = vim.json.decode(io.open(e.file, "r"):read("a"))["metadata"]
+            return metadata.kernelspec.name
+        end
+        local ok, kernel_name = pcall(try_kernel_name)
+        if not ok or not vim.tbl_contains(kernels, kernel_name) then
+            kernel_name = nil
+            local venv = os.getenv("VIRTUAL_ENV") or os.getenv("CONDA_PREFIX")
+            if venv ~= nil then
+                kernel_name = string.match(venv, "/.+/(.+)")
+            end
+        end
+        if kernel_name ~= nil and vim.tbl_contains(kernels, kernel_name) then
+            vim.cmd(("MoltenInit %s"):format(kernel_name))
+        end
+        vim.cmd("MoltenImportOutput")
+    end)
+end
+
+-- automatically import output chunks from a jupyter notebook
+vim.api.nvim_create_autocmd("BufAdd", {
+    pattern = { "*.ipynb" },
+    callback = imb,
+})
+
+-- we have to do this as well so that we catch files opened like nvim ./hi.ipynb
+vim.api.nvim_create_autocmd("BufEnter", {
+    pattern = { "*.ipynb" },
+    callback = function(e)
+        if vim.api.nvim_get_vvar("vim_did_enter") ~= 1 then
+            imb(e)
+        end
+    end,
+})
+
+-- automatically export output chunks to a jupyter notebook on write
+vim.api.nvim_create_autocmd("BufWritePost", {
+    pattern = { "*.ipynb" },
+    callback = function()
+        if require("molten.status").initialized() == "Molten" then
+            vim.cmd("MoltenExportOutput!")
+        end
+    end,
+})
+
+-- Change Molten settings based on filetype
+-- change the configuration when editing a python file
+vim.api.nvim_create_autocmd("BufEnter", {
+  pattern = "*.py",
+  callback = function(e)
+    if string.match(e.file, ".otter.") then
+      return
+    end
+    if require("molten.status").initialized() == "Molten" then -- this is kinda a hack...
+      vim.fn.MoltenUpdateOption("virt_lines_off_by_1", false)
+      vim.fn.MoltenUpdateOption("virt_text_output", false)
+    else
+      vim.g.molten_virt_lines_off_by_1 = false
+      vim.g.molten_virt_text_output = false
+    end
+  end,
+})
+
+-- Undo those config changes when we go back to a markdown or quarto file
+vim.api.nvim_create_autocmd("BufEnter", {
+  pattern = { "*.qmd", "*.md", "*.ipynb" },
+  callback = function(e)
+    if string.match(e.file, ".otter.") then
+      return
+    end
+    if require("molten.status").initialized() == "Molten" then
+      vim.fn.MoltenUpdateOption("virt_lines_off_by_1", true)
+      vim.fn.MoltenUpdateOption("virt_text_output", true)
+    else
+      vim.g.molten_virt_lines_off_by_1 = true
+      vim.g.molten_virt_text_output = true
+    end
+  end,
+})
+
+-- Provide a command to create a blank new Python notebook
+-- note: the metadata is needed for Jupytext to understand how to parse the notebook.
+-- if you use another language than Python, you should change it in the template.
+local default_notebook = [[
+  {
+    "cells": [
+     {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        ""
+      ]
+     }
+    ],
+    "metadata": {
+     "kernelspec": {
+      "display_name": "Python 3",
+      "language": "python",
+      "name": "python3"
+     },
+     "language_info": {
+      "codemirror_mode": {
+        "name": "ipython"
+      },
+      "file_extension": ".py",
+      "mimetype": "text/x-python",
+      "name": "python",
+      "nbconvert_exporter": "python",
+      "pygments_lexer": "ipython3"
+     }
+    },
+    "nbformat": 4,
+    "nbformat_minor": 5
+  }
+]]
+
+local function new_notebook(filename)
+  local path = filename .. ".ipynb"
+  local file = io.open(path, "w")
+  if file then
+    file:write(default_notebook)
+    file:close()
+    vim.cmd("edit " .. path)
+  else
+    print("Error: Could not open new notebook file for writing.")
+  end
+end
+
+vim.api.nvim_create_user_command('NewNotebook', function(opts)
+  new_notebook(opts.args)
+end, {
+  nargs = 1,
+  complete = 'file'
 })
 
 -- The line beneath this is called `modeline`. See `:help modeline`
